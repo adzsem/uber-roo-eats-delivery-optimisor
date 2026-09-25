@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import uk.jev.rider.config.RiderConfig
 
 class MainActivity : Activity() {
     private lateinit var lastEvent: TextView
@@ -32,12 +33,12 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "JEV Rider Optimiser V1"
+            text = "JEV Rider Optimiser V1.1"
             textSize = 26f
         }
 
         val subtitle = TextView(this).apply {
-            text = "Notification-first diagnostic build. Grant notification access, go online in a courier app, then inspect what Android exposes."
+            text = "Uber notification format loaded. Bike max speed: ${RiderConfig.BIKE_MAX_SPEED_MPH.toInt()} mph. Grant notification access, then inspect captured offers."
             textSize = 16f
         }
 
