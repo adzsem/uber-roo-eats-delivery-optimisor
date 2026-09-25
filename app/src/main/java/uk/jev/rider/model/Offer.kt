@@ -43,5 +43,7 @@ data class OfferRecommendation(
     val score: Int,
     val estimatedPoundsPerMile: Double?,
     val estimatedPoundsPerHour: Double?,
+    val requiredAverageSpeedMph: Double?,
+    val theoreticalMinimumRideMinutes: Double?,
     val reasons: List<String>
 )
