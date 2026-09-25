@@ -1,5 +1,6 @@
 package uk.jev.rider.scoring
 
+import uk.jev.rider.config.RiderConfig
 import uk.jev.rider.model.BikeTelemetry
 import uk.jev.rider.model.NormalisedOffer
 import uk.jev.rider.model.OfferRecommendation
@@ -7,11 +8,12 @@ import uk.jev.rider.model.RecommendationDecision
 import kotlin.math.roundToInt
 
 class LocalOfferScorer(
-    private val minimumPoundsPerMile: Double = 1.20,
-    private val preferredPoundsPerMile: Double = 1.80,
-    private val minimumPoundsPerHour: Double = 12.00,
-    private val preferredPoundsPerHour: Double = 18.00,
-    private val reserveRangeMiles: Double = 4.0
+    private val minimumPoundsPerMile: Double = RiderConfig.MINIMUM_POUNDS_PER_MILE,
+    private val preferredPoundsPerMile: Double = RiderConfig.PREFERRED_POUNDS_PER_MILE,
+    private val minimumPoundsPerHour: Double = RiderConfig.MINIMUM_POUNDS_PER_HOUR,
+    private val preferredPoundsPerHour: Double = RiderConfig.PREFERRED_POUNDS_PER_HOUR,
+    private val reserveRangeMiles: Double = RiderConfig.RESERVE_RANGE_MILES,
+    private val bikeMaxSpeedMph: Double = RiderConfig.BIKE_MAX_SPEED_MPH
 ) {
     fun score(
         offer: NormalisedOffer,
@@ -27,6 +29,16 @@ class LocalOfferScorer(
         val pph = if (offer.payGbp != null && offer.estimatedMinutes != null && offer.estimatedMinutes > 0) {
             offer.payGbp * 60.0 / offer.estimatedMinutes
         } else null
+
+        val requiredAverageSpeedMph =
+            if (offer.distanceMiles != null && offer.estimatedMinutes != null && offer.estimatedMinutes > 0) {
+                offer.distanceMiles / (offer.estimatedMinutes / 60.0)
+            } else null
+
+        val theoreticalMinimumRideMinutes =
+            offer.distanceMiles?.takeIf { it > 0.0 }?.let { distance ->
+                distance / bikeMaxSpeedMph * 60.0
+            }
 
         if (ppm != null) {
             when {
@@ -66,6 +78,15 @@ class LocalOfferScorer(
             reasons += "Time or pay missing from notification"
         }
 
+        if (requiredAverageSpeedMph != null) {
+            if (requiredAverageSpeedMph > bikeMaxSpeedMph) {
+                score -= 20
+                reasons += "Displayed estimate requires more than 19 mph average"
+            } else {
+                reasons += "Displayed estimate is feasible within 19 mph bike cap"
+            }
+        }
+
         if (bike.available) {
             val range = bike.estimatedRangeMiles
             val distance = offer.distanceMiles
@@ -98,9 +119,14 @@ class LocalOfferScorer(
         return OfferRecommendation(
             decision = decision,
             score = score,
-            estimatedPoundsPerMile = ppm?.let { (it * 100).roundToInt() / 100.0 },
-            estimatedPoundsPerHour = pph?.let { (it * 100).roundToInt() / 100.0 },
+            estimatedPoundsPerMile = ppm.round2(),
+            estimatedPoundsPerHour = pph.round2(),
+            requiredAverageSpeedMph = requiredAverageSpeedMph.round2(),
+            theoreticalMinimumRideMinutes = theoreticalMinimumRideMinutes.round2(),
             reasons = reasons
         )
     }
+
+    private fun Double?.round2(): Double? =
+        this?.let { (it * 100).roundToInt() / 100.0 }
 }
