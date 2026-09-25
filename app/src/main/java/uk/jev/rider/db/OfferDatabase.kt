@@ -11,7 +11,7 @@ class OfferDatabase(context: Context) : SQLiteOpenHelper(
     context,
     "jev_rider.db",
     null,
-    1
+    2
 ) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -30,13 +30,20 @@ class OfferDatabase(context: Context) : SQLiteOpenHelper(
                 score INTEGER NOT NULL,
                 pounds_per_mile REAL,
                 pounds_per_hour REAL,
+                required_average_speed_mph REAL,
+                theoretical_min_ride_minutes REAL,
                 reasons TEXT NOT NULL
             )
             """.trimIndent()
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE offers ADD COLUMN required_average_speed_mph REAL")
+            db.execSQL("ALTER TABLE offers ADD COLUMN theoretical_min_ride_minutes REAL")
+        }
+    }
 
     fun insert(offer: NormalisedOffer, recommendation: OfferRecommendation): Long {
         val values = ContentValues().apply {
@@ -52,6 +59,8 @@ class OfferDatabase(context: Context) : SQLiteOpenHelper(
             put("score", recommendation.score)
             recommendation.estimatedPoundsPerMile?.let { put("pounds_per_mile", it) }
             recommendation.estimatedPoundsPerHour?.let { put("pounds_per_hour", it) }
+            recommendation.requiredAverageSpeedMph?.let { put("required_average_speed_mph", it) }
+            recommendation.theoreticalMinimumRideMinutes?.let { put("theoretical_min_ride_minutes", it) }
             put("reasons", recommendation.reasons.joinToString(" | "))
         }
         return writableDatabase.insert("offers", null, values)
